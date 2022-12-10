@@ -35,6 +35,8 @@ To run an example:
 
 ```bash
 kustomize build <EXAMPLE-DIR> | kubectl apply -f -
+OR
+kubectl apply -k <EXAMPLE-DIR>
 ```
 
 2. Watch the rollout or experiment using the argo rollouts kubectl plugin:
