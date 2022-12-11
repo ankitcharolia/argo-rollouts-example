@@ -51,6 +51,11 @@ kubectl argo rollouts get experiment <EXPERIMENT-NAME> --watch
 kubectl argo rollouts set image <ROLLOUT-NAME> "*=argoproj/rollouts-demo:yellow"
 ```
 
+## Delete Argo-Rollouts Deployment
+```bash
+kubectl delete -k <EXAMPLE-DIR>
+```
+
 ## Images
 
 Available images colors are: red, orange, yellow, green, blue, purple (e.g. `argoproj/rollouts-demo:yellow`). Also available are:
