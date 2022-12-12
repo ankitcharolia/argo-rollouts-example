@@ -1,20 +1,26 @@
-apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
+apiVersion: argoproj.io/v1alpha1
 metadata:
-  name: success-rate
+  name: exit-code-job
 spec:
   args:
-  - name: ingress
+  - name: duration
+    value: 0s
+  - name: exit-code
+    value: "1"
   metrics:
-  - name: success-rate
-    interval: 10s
-    successCondition: result[0] > 0.90
+  - name: sleep-job
+    initialDelay: 10s
+    count: 1
     provider:
-      prometheus:
-        address: http://prometheus-operator-prometheus.prometheus-operator:9090
-        query: >+
-          sum(
-            rate(nginx_ingress_controller_requests{ingress="{{args.ingress}}",status!~"[4-5].*"}[20s]))
-            /
-            sum(rate(nginx_ingress_controller_requests{ingress="{{args.ingress}}"}[20s])
-          )
+      job:
+        spec:
+          template:
+            spec:
+              containers:
+              - name: sleep-job
+                image: nginx:1.19-alpine
+                command: [sh, -c, -x]
+                args: ["sleep {{args.duration}} && exit {{args.exit-code}}"]
+              restartPolicy: Never
+          backoffLimit: 0

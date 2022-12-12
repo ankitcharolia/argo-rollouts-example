@@ -11,10 +11,8 @@ spec:
   strategy:
     canary:
       analysis:
-        templateName: success-rate
-        args:
-        - name: ingress
-          value: canary-demo
+        templates:
+        - templateName: exit-code-job
       canaryService: canary-demo-preview
       steps:
       - setWeight: 40
