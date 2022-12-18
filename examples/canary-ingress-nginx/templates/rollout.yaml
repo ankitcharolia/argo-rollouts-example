@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "canary-ingress-nginx.fullname" . }}
+  labels:
+    app: {{ include "canary-ingress-nginx.name" . }}
+    chart: {{ include "canary-ingress-nginx.chart" . }}
+    release: {{ .Release.Name }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 5
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "canary-ingress-nginx.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "canary-ingress-nginx.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "canary-ingress-nginx.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  strategy:
+    canary:
+      canaryService: {{ include "canary-ingress-nginx.fullname" . }}-preview
+      stableService: {{ include "canary-ingress-nginx.fullname" . }}
+      trafficRouting:
+        nginx:
+          stableIngress: {{ include "canary-ingress-nginx.fullname" . }}
+          additionalIngressAnnotations:
+            canary-by-header: {{ .Values.canary.header.name }}
+            canary-by-header-value: {{ .Values.canary.header.value }}
+      steps:
+      - setWeight: 20
+      - pause: {}
+      - setWeight: 40
+      - pause: {duration: 100}
+      - setWeight: 60
+      - pause: {duration: 100}
+      - setWeight: 80
+      - pause: {duration: 100}
