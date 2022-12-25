@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: canary-istio
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: canary-istio
+  template:
+    metadata:
+      labels:
+        app: canary-istio
+    spec:
+      containers:
+      - name: weather-app
+        image: docker.io/atulinfracloud/weathersample:v2
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+  strategy:
+    canary:
+      stableService: weather-hyd  # required
+      canaryService: weather-ny  # required
+      trafficRouting:
+        istio:
+          virtualService:
+            name: canary-vsvc   # required
+            routes:
+            - primary            # optional if there is a single route in VirtualService, required otherwise
+      steps:
+      - setWeight: 50 # overrides the weight provided in virtualservice
+      - pause: {duration: 10m}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-hyd
+spec:
+  selector:
+    app: canary-istio
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-ny
+spec:
+  selector:
+    app: canary-istio
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: ClusterIP
